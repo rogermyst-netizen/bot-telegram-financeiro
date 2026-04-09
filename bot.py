@@ -1,16 +1,17 @@
 import telebot
 import re
 import requests
+import subprocess
 import time
 
-# 🔑 TOKENS
 TOKEN = "8507781006:AAGGRFC8sr601ICj-jUNP-UHCWsc9ZLdztk"
 ASSEMBLY_API = "675c28ccc7e0456bb99e83fbf0c79324"
 
 bot = telebot.TeleBot(TOKEN)
 
-
-# 🧠 Função para extrair gasto
+# ---------------------------
+# Função de texto
+# ---------------------------
 def extrair_gasto(texto):
     texto = texto.lower()
 
@@ -28,33 +29,30 @@ def extrair_gasto(texto):
 
     return valor, categoria
 
-
-# 💬 TEXTO
+# ---------------------------
+# TEXTO
+# ---------------------------
 @bot.message_handler(content_types=['text'])
 def responder(mensagem):
-    try:
-        texto = mensagem.text
+    texto = mensagem.text
 
-        valor, categoria = extrair_gasto(texto)
+    valor, categoria = extrair_gasto(texto)
 
-        if valor:
-            resposta = f"💰 Anotado: R${valor} - {categoria}"
-        else:
-            resposta = "Não entendi. Tente: 'gastei 50 no almoço'"
+    if valor:
+        resposta = f"💰 Anotado: R${valor} - {categoria}"
+    else:
+        resposta = "Não entendi. Ex: 'gastei 50 no almoço'"
 
-        bot.reply_to(mensagem, resposta)
+    bot.reply_to(mensagem, resposta)
 
-    except Exception as e:
-        print(f"Erro texto: {e}")
-
-
-# 🎧 ÁUDIO (COM TRANSCRIÇÃO REAL)
+# ---------------------------
+# ÁUDIO
+# ---------------------------
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     try:
         bot.send_message(message.chat.id, "🎧 Processando áudio...")
 
-        # baixar áudio do Telegram
         file_info = bot.get_file(message.voice.file_id)
         file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
 
@@ -63,42 +61,40 @@ def handle_voice(message):
         with open("audio.ogg", "wb") as f:
             f.write(audio_file.content)
 
-        # 🔥 IMPORTANTE: converter para .wav (AssemblyAI funciona melhor)
-        import subprocess
-        subprocess.run(["ffmpeg", "-i", "audio.ogg", "audio.wav", "-y"])
+        # converter para wav
+        subprocess.run(["ffmpeg", "-i", "audio.ogg", "audio.wav"], check=True)
 
         # upload para AssemblyAI
         headers = {"authorization": ASSEMBLY_API}
 
-        upload_response = requests.post(
+        upload = requests.post(
             "https://api.assemblyai.com/v2/upload",
             headers=headers,
             data=open("audio.wav", "rb")
         )
 
-        audio_url = upload_response.json()['upload_url']
+        audio_url = upload.json()["upload_url"]
 
-        # iniciar transcrição
-        transcript_response = requests.post(
+        transcricao = requests.post(
             "https://api.assemblyai.com/v2/transcript",
             json={"audio_url": audio_url, "language_code": "pt"},
             headers=headers
         )
 
-        transcript_id = transcript_response.json()['id']
+        transcript_id = transcricao.json()["id"]
 
-        # aguardar resultado
+        # esperar transcrição
         while True:
-            polling = requests.get(
+            resultado = requests.get(
                 f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
                 headers=headers
             ).json()
 
-            if polling['status'] == 'completed':
-                texto = polling['text']
+            if resultado["status"] == "completed":
+                texto = resultado["text"]
                 break
-            elif polling['status'] == 'error':
-                bot.send_message(message.chat.id, "❌ Erro na transcrição")
+            elif resultado["status"] == "error":
+                bot.send_message(message.chat.id, "Erro ao transcrever áudio")
                 return
 
             time.sleep(2)
@@ -107,17 +103,18 @@ def handle_voice(message):
         valor, categoria = extrair_gasto(texto)
 
         if valor:
-            resposta = f"🎧 Você disse: {texto}\n💰 R${valor} - {categoria}"
+            resposta = f"🎤 {texto}\n💰 R${valor} - {categoria}"
         else:
-            resposta = f"🎧 Você disse: {texto}\nNão entendi o gasto"
+            resposta = f"🎤 {texto}\nNão entendi o gasto"
 
         bot.send_message(message.chat.id, resposta)
 
     except Exception as e:
-        print(f"Erro áudio: {e}")
-        bot.send_message(message.chat.id, "❌ Erro ao processar áudio")
+        print("Erro áudio:", e)
+        bot.send_message(message.chat.id, "Erro ao processar áudio")
 
-
-# 🚀 START
+# ---------------------------
+# START
+# ---------------------------
 print("Bot rodando...")
-bot.infinity_polling(timeout=30, long_polling_timeout=30)
+bot.infinity_polling()
