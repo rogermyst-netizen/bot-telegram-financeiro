@@ -3,6 +3,7 @@ import re
 import requests
 
 TOKEN = "SEU_TOKEN_AQUI"
+
 bot = telebot.TeleBot(TOKEN)
 
 def extrair_gasto(texto):
@@ -58,7 +59,5 @@ def handle_voice(message):
         bot.send_message(message.chat.id, f"Erro no áudio: {e}")
 
 
-# 🚀 START
+# 🚀 START (SEM WHILE, SEM TRY)
 bot.infinity_polling()
-    except Exception as e:
-        bot.send_message(message.chat.id, f"Erro no áudio: {e}")
