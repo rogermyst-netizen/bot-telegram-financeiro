@@ -46,3 +46,23 @@ while True:
     except Exception as e:
         print(f"Erro: {e}")
         time.sleep(5)
+
+import requests
+
+@bot.message_handler(content_types=['voice'])
+def handle_voice(message):
+    try:
+        bot.send_message(message.chat.id, "🎧 Recebi seu áudio, processando...")
+
+        file_info = bot.get_file(message.voice.file_id)
+        file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
+
+        audio_file = requests.get(file_url)
+        
+        with open("audio.ogg", "wb") as f:
+            f.write(audio_file.content)
+
+        bot.send_message(message.chat.id, "✅ Áudio recebido com sucesso!")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Erro no áudio: {e}")
