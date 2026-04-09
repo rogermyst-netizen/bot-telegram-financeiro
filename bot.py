@@ -38,4 +38,11 @@ def responder(mensagem):
 
     bot.reply_to(mensagem, resposta)
 
-bot.infinity_polling()
+import time
+
+while True:
+    try:
+        bot.polling(none_stop=True, timeout=30, long_polling_timeout=30)
+    except Exception as e:
+        print(f"Erro: {e}")
+        time.sleep(5)
