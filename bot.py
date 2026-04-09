@@ -1,19 +1,16 @@
 import telebot
 import re
+import requests
 
-TOKEN = "8507781006:AAGGRFC8sr601ICj-jUNP-UHCWsc9ZLdztk"
-ASSEMBLY_API = "675c28ccc7e0456bb99e83fbf0c79324"
-
+TOKEN = "SEU_TOKEN_AQUI"
 bot = telebot.TeleBot(TOKEN)
 
 def extrair_gasto(texto):
     texto = texto.lower()
 
-    # pegar valor
     valor = re.findall(r'\d+', texto)
     valor = valor[0] if valor else None
 
-    # categorias simples
     if "almoço" in texto or "comida" in texto or "lanche" in texto:
         categoria = "Alimentação"
     elif "uber" in texto or "gasolina" in texto:
@@ -25,7 +22,9 @@ def extrair_gasto(texto):
 
     return valor, categoria
 
-@bot.message_handler(func=lambda m: True)
+
+# ✅ TEXTO
+@bot.message_handler(content_types=['text'])
 def responder(mensagem):
     texto = mensagem.text
 
@@ -34,21 +33,12 @@ def responder(mensagem):
     if valor:
         resposta = f"💰 Anotado: R${valor} - {categoria}"
     else:
-        resposta = "Não entendi. Tente algo como: 'gastei 50 no almoço'"
+        resposta = "Não entendi. Tente: gastei 50 no almoço"
 
     bot.reply_to(mensagem, resposta)
 
-import time
 
-while True:
-    try:
-        bot.polling(none_stop=True, timeout=30, long_polling_timeout=30)
-    except Exception as e:
-        print(f"Erro: {e}")
-        time.sleep(5)
-
-import requests
-
+# ✅ ÁUDIO
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     try:
@@ -58,11 +48,17 @@ def handle_voice(message):
         file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}"
 
         audio_file = requests.get(file_url)
-        
+
         with open("audio.ogg", "wb") as f:
             f.write(audio_file.content)
 
         bot.send_message(message.chat.id, "✅ Áudio recebido com sucesso!")
 
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Erro no áudio: {e}")
+
+
+# 🚀 START
+bot.infinity_polling()
     except Exception as e:
         bot.send_message(message.chat.id, f"Erro no áudio: {e}")
