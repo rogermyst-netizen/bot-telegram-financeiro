@@ -2,6 +2,7 @@ import telebot
 import re
 
 TOKEN = "8507781006:AAHxkzIKemjWbNbonFkBSrAPvmEO9tjTYF4"
+ASSEMBLY_API = "675c28ccc7e0456bb99e83fbf0c79324"
 
 bot = telebot.TeleBot(TOKEN)
 
